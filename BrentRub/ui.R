@@ -19,19 +19,24 @@ shinyUI(fluidPage(
   sidebarLayout(
     sidebarPanel(
       dateRangeInput('dateRange',
-                     label = 'Введите дату: yyyy-mm-dd',
-                     start = first_date, end = Sys.Date(),
-                     language = 'ru'
-      ),
+                      label = 'Введите дату: yyyy-mm-dd',
+                      start = first_date, end = Sys.Date(),
+                      language = 'ru'
+                     ),
       dateInput('date_highlight',
                 label = 'Введите дату для стрелки',
-                value=Sys.Date(),format = "yyyy-mm-dd", language = 'ru')
+                value=Sys.Date(),format = "yyyy-mm-dd", language = 'ru'),
+      checkboxInput("real_prices", "В постоянных ценах", FALSE)
     ),
     
 
     # Show ggvis plot  
     mainPanel(
-       plotlyOutput("plot")
-    )
+       tabsetPanel(type = "tabs", 
+                   tabPanel("Диаграмма",plotlyOutput("plot")),
+                   tabPanel("Рублевая цена",plotlyOutput("plot2")),
+                   tabPanel("Приросты",plotlyOutput("plot3")))
+    ),
+   fluid = FALSE
   )
 ))

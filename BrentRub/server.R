@@ -92,6 +92,32 @@ shinyServer(function(input, output) {
      
      p
   })
+  
+  output$plot2 <- renderPlotly({
+     buff <- data()
+     p2 <- plot_ly(x = ~date, y = ~(Brent/USD),  data = buff, mode = 'lines')
+     p2
+     
+  })
+  # график с приростами
+  output$plot3 <- renderPlotly({
+     buff <- data()
+     buff <- buff[complete.cases(buff),]
+     x1 <- mean(buff$dlog_Brent)
+     y1 <- mean(buff$dlog_USD)
+     z_dlog <- rlm(dlog_USD ~ dlog_Brent, data = buff)
+     
+     p3 <- plot_ly(data = buff, x = ~dlog_Brent, y = ~dlog_USD, type = 'scatter',text = ~paste("Дата: ", date)) %>%  
+        add_trace(x = ~dlog_Brent, y = fitted(z_dlog), mode = "lines") %>%
+        layout(
+           showlegend = F,
+           annotations = list(x = x1, y = y1, text = paste0("Beta =",round(z_dlog$coefficients[2],2)), showarrow = T,ax = -45, ay = -45)
+           )
+     
+     p3
+     
+     
+  })
 })
 
 
