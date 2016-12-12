@@ -95,7 +95,11 @@ shinyServer(function(input, output) {
   
   output$plot2 <- renderPlotly({
      buff <- data()
-     p2 <- plot_ly(x = ~date, y = ~(Brent/USD),  data = buff, mode = 'lines')
+     x <- list(title = NA)
+     y <- list(title = "Рублевая цена нефти, руб./барр.")
+     
+     p2 <- plot_ly(x = ~date, y = ~(Brent/USD),  data = buff, mode = 'lines') %>% 
+        layout(xaxis = x,yaxis = y)
      p2
      
   })
