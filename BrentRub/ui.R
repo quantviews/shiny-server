@@ -7,7 +7,7 @@
 
 library(shiny)
 library(magrittr)
-library(ggvis)
+library(plotly)
 
 
 shinyUI(fluidPage(
@@ -24,15 +24,14 @@ shinyUI(fluidPage(
                      language = 'ru'
       ),
       dateInput('date_highlight',
-                label = 'Введите дату для подсветки',
-                value=NULL,format = "yyyy-mm-dd", language = 'ru')
+                label = 'Введите дату для стрелки',
+                value=Sys.Date(),format = "yyyy-mm-dd", language = 'ru')
     ),
     
 
     # Show ggvis plot  
     mainPanel(
-      uiOutput("ggvis_ui"),
-      ggvisOutput("ggvis")
+       plotlyOutput("plot")
     )
   )
 ))

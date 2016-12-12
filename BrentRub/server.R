@@ -40,9 +40,8 @@ shinyServer(function(input, output) {
 
   data <- reactive({
     # проверка, что первая дата меньше второй. НЕ РАботает 
-    validate(
-      need(input$dateRange[2] > input$dateRange[1], "end date is earlier than start date")
-    )
+        validate(
+             need(input$dateRange[2] > input$dateRange[1], "end date is earlier than start date"))
     
      dateRange <- paste0(input$dateRange[1], '::', input$dateRange[2])
      #print(dateRange)
@@ -53,29 +52,45 @@ shinyServer(function(input, output) {
     })
   
   data2 <- reactive({
-    date_higlight <- input$date_highlight
-    data2 <- data[buff$date == date_highlight,]
-    return(data2)
-  })
+               data2 <- buff[buff$date == as.Date(input$date_highlight),]
+               return(data2)
+           })
 
     
+  output$plot <- renderPlotly({
   
-  
-  #ggplot(buff, aes(x = Brent, y = USD))+geom_point()
-    # R
-    data %>%
-      ggvis(~Brent, ~USD) %>%
-      layer_model_predictions(model = "lm", formula = USD ~ log(Brent) ) %>%  
-      layer_points(fill = ~factor(year), size :=20, key := ~id) %>% 
-      layer_points(data = tail(buff,1), fill := "red", size:=40, key := ~id) %>%
-      #layer_points(x= as.numeric(last(fx$Brent)), y=as.numeric(last(fx$USD)), size :=60, fill = 'red') %>%
-      #hide_legend("fill") %>%  
-      #add_axis("x", title = 'Brent, $/баррель') %>%
-      #add_axis("y", title = 'RUB/USD') %>%
-      add_tooltip(all_values, "hover") %>%
-      bind_shiny("ggvis", "ggvis_ui")
-  
-
+  # #ggplot(buff, aes(x = Brent, y = USD))+geom_point()
+  #   # R
+  #   data %>%
+  #     ggvis(~Brent, ~USD) %>%
+  #     layer_model_predictions(model = "lm", formula = USD ~ log(Brent) ) %>%  
+  #     layer_points(fill = ~factor(year), size :=20, key := ~id) %>% 
+  #     layer_points(data = tail(buff,1), fill := "red", size:=40, key := ~id) %>%
+  #     #layer_points(x= as.numeric(last(fx$Brent)), y=as.numeric(last(fx$USD)), size :=60, fill = 'red') %>%
+  #     #hide_legend("fill") %>%  
+  #     #add_axis("x", title = 'Brent, $/баррель') %>%
+  #     #add_axis("y", title = 'RUB/USD') %>%
+  #     add_tooltip(all_values, "hover") %>%
+  #     bind_shiny("ggvis", "ggvis_ui")
+  # 
+     buff <- data()
+     last_point <- data2()
+     #last_point <- buff[nrow(buff),]
+     
+     z <- lm(USD ~ Brent, data = buff)
+     z_dlog <- rlm(dlog_USD ~ dlog_Brent, data = buff)
+     
+     p <- plot_ly(data = buff, x = ~Brent, y = ~USD, type = 'scatter', 
+                  color = ~as.factor(year),
+                  text = ~paste("Дата: ", date, '$<br>Брент:', Brent, '$<br>RUB/USD:', round(1/USD,2))) %>% 
+        add_trace(x = ~Brent, y = fitted(z), mode = "lines") %>%
+        layout(
+           annotations = list(x = last_point$Brent, y = last_point$USD, text = paste0(last_point$date), showarrow = T,ax = -20, ay = -60)
+        )
+     
+     
+     p
+  })
 })
 
 
