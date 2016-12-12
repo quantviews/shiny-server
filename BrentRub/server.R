@@ -6,7 +6,8 @@
 #
 
 library(shiny)
-library(ggvis)
+library(plotly)
+library(MASS)
 library(magrittr)
 library(xts)
 #library(ggplot2)
