@@ -33,9 +33,6 @@ XtstoDf <- function(ts, ...){
   return(df)
 }
 
-
-
-
 shinyServer(function(input, output) {
 
 
@@ -56,36 +53,37 @@ shinyServer(function(input, output) {
                data2 <- buff[buff$date == as.Date(input$date_highlight),]
                return(data2)
            })
+  data3 <- reactive({
+     real_prices <- input$real_prices
+     return(real_prices)
+  })
+  
 
     
   output$plot <- renderPlotly({
   
-  # #ggplot(buff, aes(x = Brent, y = USD))+geom_point()
-  #   # R
-  #   data %>%
-  #     ggvis(~Brent, ~USD) %>%
-  #     layer_model_predictions(model = "lm", formula = USD ~ log(Brent) ) %>%  
-  #     layer_points(fill = ~factor(year), size :=20, key := ~id) %>% 
-  #     layer_points(data = tail(buff,1), fill := "red", size:=40, key := ~id) %>%
-  #     #layer_points(x= as.numeric(last(fx$Brent)), y=as.numeric(last(fx$USD)), size :=60, fill = 'red') %>%
-  #     #hide_legend("fill") %>%  
-  #     #add_axis("x", title = 'Brent, $/баррель') %>%
-  #     #add_axis("y", title = 'RUB/USD') %>%
-  #     add_tooltip(all_values, "hover") %>%
-  #     bind_shiny("ggvis", "ggvis_ui")
-  # 
      buff <- data()
      last_point <- data2()
+     real_prices <- data3()
      #last_point <- buff[nrow(buff),]
+     x <- list(title = "Брент, $/баррель")
+     y <- list(title = "RUB/USD")
+      if(real_prices){
+         buff2 <- buff[,c("USD_real",   "Brent_real","year", 'date')]
+         names(buff2)[1:2] <- c('USD', "Brent")
+      }else{
+         buff2 <- buff[,c("USD",   "Brent","year", 'date')]
+      }
      
-     z <- lm(USD ~ Brent, data = buff)
-     z_dlog <- rlm(dlog_USD ~ dlog_Brent, data = buff)
+     z <- lm(USD ~ Brent, data = buff2)
      
-     p <- plot_ly(data = buff, x = ~Brent, y = ~USD, type = 'scatter', 
+     
+     p <- plot_ly(data = buff2, x = ~Brent, y = ~USD, type = 'scatter', 
                   color = ~as.factor(year),
                   text = ~paste("Дата: ", date, '$<br>Брент:', Brent, '$<br>RUB/USD:', round(1/USD,2))) %>% 
         add_trace(x = ~Brent, y = fitted(z), mode = "lines") %>%
         layout(
+           xaxis = x,yaxis = y,
            annotations = list(x = last_point$Brent, y = last_point$USD, text = paste0(last_point$date), showarrow = T,ax = -20, ay = -60)
         )
      
@@ -95,14 +93,22 @@ shinyServer(function(input, output) {
   
   output$plot2 <- renderPlotly({
      buff <- data()
+     real_prices <- data3()
      x <- list(title = NA)
      y <- list(title = "Рублевая цена нефти, руб./барр.")
      
-     p2 <- plot_ly(x = ~date, y = ~(Brent/USD),  data = buff, mode = 'lines') %>% 
+     if(real_prices){
+        buff2 <- buff[,c("USD_real",   "Brent_real","year", 'date')]
+        names(buff2)[1:2] <- c('USD', "Brent")
+     }else{
+        buff2 <- buff[,c("USD",   "Brent","year", 'date')]
+     }
+     p2 <- plot_ly(x = ~date, y = ~(Brent/USD),  data = buff2, mode = 'lines') %>% 
         layout(xaxis = x,yaxis = y)
      p2
      
   })
+  
   # график с приростами
   output$plot3 <- renderPlotly({
      buff <- data()
