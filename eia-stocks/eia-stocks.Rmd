@@ -1,0 +1,228 @@
+---
+title: "Запасы нефти и нефтепродуктов в США"
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
+---
+
+```{r setup, include=FALSE, message=FALSE}
+library(flexdashboard)
+library(shiny)
+library(EIAdata)
+library(highcharter)
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+api_key <- '2EA2C23052512D4EFCD59A64D5E7ACEC'
+
+```
+
+
+Sidebar {.sidebar}
+=====================================
+
+```{r input, echo=FALSE}
+
+helpText("Введите параметры")
+
+fluidRow(
+  column(7,
+  dateInput("start_date", "Начальная дата", "2012-01-01", format = "yyyy-mm-dd")),
+  column(7,
+    numericInput("years", "Диапазон среднего (лет)", 5,min=2, max = 10)),
+  column(7,
+         selectInput("variable", "Тип:",
+              c("Нефть" = "PET.WCESTUS1.W",
+                "Бензин" = "PET.WGTSTUS1.W",
+                'Мазут' = 'PET.WDISTUS1.W',
+                'Нефть & Продукты' = 'PET.WTESTUS1.W'
+                )))
+)
+
+start_date <- reactive({
+   start_date <- as.Date(input$start_date)
+   return(start_date)
+})
+
+choose_product <- reactive({
+  w <- as.character(input$variable)
+  crude <- getEIA(ID = w, key = api_key)
+  return(crude)
+  
+})
+
+choose_years <- reactive({
+  years <- input$years
+  return(years)
+  
+})
+
+#gas <- getEIA(ID = "PET.WGTSTUS1.W", key = api_key)
+
+
+
+```
+
+
+Источник данных: EIA 
+
+Автор: Салихов Марсель (ИЭФ)
+
+Неделя/неделя
+===================================== 
+
+Row {data-height=600}
+-----------------------------------------------------------------------
+
+
+```{r crude, echo=FALSE}
+
+
+highchartOutput('dygraphWeekChanges')
+
+output$dygraphWeekChanges <-renderHighchart({
+ crude <- choose_product()
+ start_date2 <- start_date()
+ buff2 <- crude[paste0(start_date2,  '::')]
+ buff2 <- (buff2 - lag(buff2))/1000
+ sd_buff <- round(sd(buff2, na.rm = TRUE),2)
+
+ buff2 <- merge(buff2, buff2[buff2[,1]>0])
+ buff2 <- merge(buff2, buff2[buff2[,1]<0,1])
+ names(buff2) <- c('crude', 'plus', 'minus')
+
+ highchart() %>% 
+   hc_xAxis(categories = as.Date(index(buff2))) %>% 
+   hc_exporting(enabled = TRUE) %>%
+   hc_yAxis(title = list(text = "млн баррелей")) %>% 
+   hc_add_series(name = "Изм н/н", type = "column", groupPadding = 0.0, color = 'green',
+                 data = coredata(buff2$plus)) %>%
+   hc_add_series(name = "Изм н/н", type = "column", groupPadding = 0.0, color = 'red',
+                 data = coredata(buff2$minus)) %>%
+   hc_add_series(name = "s.d.", type = "line", color = 'black', dashStyle='Dash',lineWidth=1,
+                 data = rep(sd_buff, nrow(buff2))) %>%
+   hc_add_series(name = "s.d.", type = "line", color = 'black', dashStyle='Dash',lineWidth=1,
+                 data = rep(-sd_buff, nrow(buff2)))
+
+
+
+ 
+})
+
+```
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+
+### Изменение запасов 
+
+Данные по запасам нефти в США каждую неделю публикует Управление по энергетической информации США (Energy Information Administration). В последние годы эти данные оказывают сильное краткосрочное влияние на мировой рынок нефти, так как воспринимаются рынком как важный индикатор изменения дисбаланса. Потенциально рост запасов указывает на увеличение дисбаланса, то есть превышение текущего спроса над предложением, снижение запасов - снижение дисбаланса. 
+
+На графике приведено изменение запасов от недели к недели -- это основной индикатор, на который обращают участники рынка. На графике также приведены значения среднеквадратического отклонения (s.d.) черными пунтирными линиями за период, отображаемый на графике. 
+
+На панели слева вы можете изменить начальную дату для построения графиков (по умолчанию -- с начала 2012 года), а также тип продукта -- сырая нефть (без учета стратегических запасов), бензин, мазут. Категория "нефть и нефтепродукты" представляет собой сумму запасов сырой нефти и всех категорий нефтепродуктов. 
+
+Год/год
+===================================== 
+
+Row {data-height=600}
+-----------------------------------------------------------------------
+
+
+```{r yearly, echo=FALSE}
+
+
+highchartOutput('YearlyChanges')
+
+output$YearlyChanges <-renderHighchart({
+ crude <- choose_product()
+ start_date2 <- start_date()
+ buff2 <- crude[paste0(start_date2-365,  '::')]
+ buff2 <- (buff2 - lag(buff2,52))/1000
+ buff2 <- buff2[paste0(start_date2,  '::')]
+
+ buff2 <- merge(buff2, buff2[buff2[,1]>0])
+ buff2 <- merge(buff2, buff2[buff2[,1]<0,1])
+ names(buff2) <- c('crude', 'plus', 'minus')
+
+ highchart() %>% 
+   hc_xAxis(categories = as.Date(index(buff2))) %>% 
+   hc_exporting(enabled = TRUE) %>%
+   hc_yAxis(title = list(text = "млн баррелей")) %>% 
+   hc_add_series(name = "Изм г/г", type = "column", groupPadding = 0.0, color = 'green',
+                 data = coredata(buff2$plus)) %>%
+   hc_add_series(name = "Изм г/г", type = "column", groupPadding = 0.0, color = 'red',
+                 data = coredata(buff2$minus))
+
+
+
+ 
+})
+
+```
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+
+### Годовое изменение запасов
+
+На графике отражено изменение запасов по отношению к соответствующей неделе прошлого года. 
+
+Исходные 
+===================================== 
+
+Row {data-height=600}
+-----------------------------------------------------------------------
+
+
+```{r, echo=FALSE}
+highchartOutput('LineSeasonal')
+
+output$LineSeasonal <-renderHighchart({
+ #crude <- choose_product()
+ start_date2 <- start_date()
+ years <- choose_years()
+ buff <- choose_product()
+ nm <- paste0('lag',1:years)
+ nas <- xts(as.data.frame(matrix(nrow =nrow(buff), ncol = length(nm), dimnames = list(NULL,     nm))),order.by = index(buff))
+ buff <- merge(buff, nas)
+ rm(nas)
+
+ for(i in 1:years){
+   buff[,i+1] <- dplyr::lag(buff[,1],n = 52*i,)
+ }
+
+buff2 <- buff[,1]
+# посчитать максимальные и минимальные значения за последние years (смещение на 52 недели)
+buff2$max <- xts(coredata(apply(buff[,(2:ncol(buff))],1, max)), order.by = index(buff))
+buff2$min <- xts(coredata(apply(buff[,(2:ncol(buff))],1, min)), order.by = index(buff))
+buff2 <- buff2[paste0(start_date2,'::')]
+dt <- index(buff2)
+buff2 <- as.data.frame(buff2)
+buff2$x <- as.Date(dt)
+names(buff2)[1] <- 'y'
+#tail(buff2)
+highchart() %>%
+   hc_add_series_times_values(name = 'уровень запасов', dates = buff2$x,values = buff2$y, 
+                              color = 'red', size = 2) %>%
+   hc_exporting(enabled = TRUE) %>%
+   hc_yAxis(title = list(text = "млн баррелей")) %>% 
+   hc_add_series_df(data = buff2, name = 'среднее', type = "arearange", 
+                 x = x,
+                 low = min,
+                 high =max)
+
+
+ 
+})
+
+```
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+
+### Абсолютное значение запасов
+
+На графике отражено динамика запасов, а также максимальные и минимальные значения запасов на текущую неделю за предыдущие X лет (по умолчанию - 5 лет) -- синия зона. На панели слева вы можете изменить количество лет, которое использует для расчета максимальных/минимальных значений.   
+
+По графику видно, что рост запасов с 2014 года значительно превысил многолетние средние значения. 
