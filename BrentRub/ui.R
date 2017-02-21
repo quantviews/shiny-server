@@ -25,7 +25,7 @@ shinyUI(fluidPage(
                      ),
       dateInput('date_highlight',
                 label = 'Введите дату для стрелки',
-                value=Sys.Date(),format = "yyyy-mm-dd", language = 'ru'),
+                value=Sys.Date()-1,format = "yyyy-mm-dd", language = 'ru'),
       checkboxInput("real_prices", "В постоянных ценах", FALSE)
     ),
     
