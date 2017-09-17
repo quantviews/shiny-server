@@ -3,8 +3,10 @@ title: "Запасы нефти и нефтепродуктов в США"
 runtime: shiny
 output:
   flexdashboard::flex_dashboard:
+    theme: yeti
     orientation: rows
 ---
+
 
 ```{r setup, include=FALSE, message=FALSE}
 library(flexdashboard)
@@ -57,21 +59,18 @@ choose_years <- reactive({
   
 })
 
-#gas <- getEIA(ID = "PET.WGTSTUS1.W", key = api_key)
-
-
 
 ```
 
 
-Источник данных: EIA 
+Источник данных: [EIA](https://www.eia.gov/petroleum/supply/weekly/)
 
-Автор: Салихов Марсель (ИЭФ)
+Автор: [Салихов Марсель](marcel.salikhov@gmail.com) (ИЭФ)
 
 Неделя/неделя
 ===================================== 
 
-Row {data-height=600}
+Row {data-height=400}
 -----------------------------------------------------------------------
 
 
@@ -86,27 +85,22 @@ output$dygraphWeekChanges <-renderHighchart({
  buff2 <- crude[paste0(start_date2,  '::')]
  buff2 <- (buff2 - lag(buff2))/1000
  sd_buff <- round(sd(buff2, na.rm = TRUE),2)
-
  buff2 <- merge(buff2, buff2[buff2[,1]>0])
  buff2 <- merge(buff2, buff2[buff2[,1]<0,1])
  names(buff2) <- c('crude', 'plus', 'minus')
-
+ buff2$dt = datetime_to_timestamp(time(buff2)) # convert date column to datestamp
+ buff2 = as_tibble(buff2)
+ buff2$sd_plus = sd_buff 
+ buff2$sd_min = -sd_buff
  highchart() %>% 
-   hc_xAxis(categories = as.Date(index(buff2))) %>% 
+   hc_xAxis(type = "datetime") %>% 
    hc_exporting(enabled = TRUE) %>%
    hc_yAxis(title = list(text = "млн баррелей")) %>% 
-   hc_add_series(name = "Изм н/н", type = "column", groupPadding = 0.0, color = 'green',
-                 data = coredata(buff2$plus)) %>%
-   hc_add_series(name = "Изм н/н", type = "column", groupPadding = 0.0, color = 'red',
-                 data = coredata(buff2$minus)) %>%
-   hc_add_series(name = "s.d.", type = "line", color = 'black', dashStyle='Dash',lineWidth=1,
-                 data = rep(sd_buff, nrow(buff2))) %>%
-   hc_add_series(name = "s.d.", type = "line", color = 'black', dashStyle='Dash',lineWidth=1,
-                 data = rep(-sd_buff, nrow(buff2)))
+   hc_add_series(buff2, "column", hcaes(dt, plus), name = "Изм н/н",  groupPadding = 0.0, color = 'green') %>%
+   hc_add_series(buff2, "column", hcaes(dt, minus), name = "Изм н/н", groupPadding = 0.0, color = 'red') %>%
+   hc_add_series(buff2, "line", hcaes(dt, sd_plus), name = "s.d.", color = 'black', dashStyle = 'Dash',lineWidth=1) %>%
+   hc_add_series(buff2, "line", hcaes(dt, sd_min), name = "s.d.",  color = 'black', dashStyle = 'Dash',lineWidth=1) 
 
-
-
- 
 })
 
 ```
@@ -116,9 +110,9 @@ Row {data-height=350}
 
 ### Изменение запасов 
 
-Данные по запасам нефти в США каждую неделю публикует Управление по энергетической информации США (Energy Information Administration). В последние годы эти данные оказывают сильное краткосрочное влияние на мировой рынок нефти, так как воспринимаются рынком как важный индикатор изменения дисбаланса. Потенциально рост запасов указывает на увеличение дисбаланса, то есть превышение текущего спроса над предложением, снижение запасов - снижение дисбаланса. 
+Данные по запасам нефти в США каждую неделю публикует Управление по энергетической информации США ([Energy Information Administration](https://www.eia.gov/petroleum/supply/weekly/)) в рамках публикации Weekly Status Report. В последние годы эти данные оказывают сильное краткосрочное влияние на мировой рынок нефти, так как воспринимаются рынком как важный индикатор изменения дисбаланса. Потенциально рост запасов указывает на увеличение дисбаланса, то есть превышение текущего спроса над предложением, снижение запасов -- снижение дисбаланса. Однако запасы характеризуются также сезонными изменениями из-за сезонности спроса и графиков загрузки НПЗ. 
 
-На графике приведено изменение запасов от недели к недели -- это основной индикатор, на который обращают участники рынка. На графике также приведены значения среднеквадратического отклонения (s.d.) черными пунтирными линиями за период, отображаемый на графике. 
+На графике приведено изменение запасов от недели к недели -- это основной индикатор, на который обращают участники рынка. На графике также приведены значения среднеквадратического отклонения (s.d.) черными пунтирными линиями за период, отображаемый на графике. Изменения менее одного стандартного отклонения, скорее всего, являются шумом. 
 
 На панели слева вы можете изменить начальную дату для построения графиков (по умолчанию -- с начала 2012 года), а также тип продукта -- сырая нефть (без учета стратегических запасов), бензин, мазут. Категория "нефть и нефтепродукты" представляет собой сумму запасов сырой нефти и всех категорий нефтепродуктов. 
 
@@ -144,17 +138,14 @@ output$YearlyChanges <-renderHighchart({
  buff2 <- merge(buff2, buff2[buff2[,1]>0])
  buff2 <- merge(buff2, buff2[buff2[,1]<0,1])
  names(buff2) <- c('crude', 'plus', 'minus')
-
+ buff2$dt = datetime_to_timestamp(time(buff2))
+ buff2 = as_tibble(buff2)
  highchart() %>% 
-   hc_xAxis(categories = as.Date(index(buff2))) %>% 
+   hc_xAxis(type = "datetime") %>% 
    hc_exporting(enabled = TRUE) %>%
    hc_yAxis(title = list(text = "млн баррелей")) %>% 
-   hc_add_series(name = "Изм г/г", type = "column", groupPadding = 0.0, color = 'green',
-                 data = coredata(buff2$plus)) %>%
-   hc_add_series(name = "Изм г/г", type = "column", groupPadding = 0.0, color = 'red',
-                 data = coredata(buff2$minus))
-
-
+   hc_add_series(buff2, "column", hcaes(dt, plus), name = "Изм г/г", groupPadding = 0.0, color = 'green') %>%
+   hc_add_series(buff2, "column", hcaes(dt, minus), name = "Изм г/г", groupPadding = 0.0, color = 'red')
 
  
 })
